@@ -49,6 +49,8 @@ export default async function DashboardPage() {
       progressPercent={progressPercent}
       canWithdraw={canWithdraw}
       threshold={threshold}
+      level1Rate={config.level1CommissionRate}
+      level2Rate={config.level2CommissionRate}
     />
   );
 }

@@ -146,9 +146,11 @@ export default function PromotionPage() {
           <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Active Round</h2>
-              <button onClick={handleDraw} className="rounded-lg bg-zinc-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
-                Draw Now
-              </button>
+              {expired && (
+                <button onClick={handleDraw} className="rounded-lg bg-zinc-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
+                  Draw Now
+                </button>
+              )}
             </div>
             {activeRound ? (
               <>

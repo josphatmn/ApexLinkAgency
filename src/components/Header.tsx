@@ -38,6 +38,8 @@ export default function Header() {
   const isAdmin = pathname.startsWith('/admin');
   if (isAdmin) return null;
 
+  const isLanding = pathname === '/' && !user;
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout');
     window.location.href = '/login';
@@ -50,9 +52,9 @@ export default function Header() {
     : '#8b5cf6';
 
   return (
-    <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
+    <header className={`sticky top-0 z-50 border-b dark:border-zinc-800 ${isLanding ? 'border-transparent bg-transparent' : 'border-zinc-200 bg-white/80 backdrop-blur-md dark:bg-zinc-950/80'}`}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link href="/" className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
+        <Link href="/" className={`text-xl font-bold tracking-tight ${isLanding ? 'text-zinc-900 drop-shadow-sm dark:text-white dark:drop-shadow-lg' : 'text-zinc-900 dark:text-white'}`}>
           {process.env.NEXT_PUBLIC_SITE_NAME || 'APEXLINK Agency'}
         </Link>
 
@@ -66,7 +68,7 @@ export default function Header() {
                   <div className="relative">
                     <button
                       onClick={() => setMegaOpen(!megaOpen)}
-                      className="flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                      className={`flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium ${isLanding ? 'text-zinc-800 drop-shadow-sm hover:bg-black/5 dark:text-white/90 dark:drop-shadow-lg dark:hover:bg-white/10' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white'}`}
                     >
                       Premium Access
                       <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6" /></svg>
@@ -74,8 +76,8 @@ export default function Header() {
                     {megaOpen && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setMegaOpen(false)} />
-                        <div className="absolute right-0 top-full z-50 mt-2 w-[640px] rounded-xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
-                          <div className="grid grid-cols-2 gap-3">
+                        <div className="absolute right-0 top-full z-50 mt-2 w-[640px] rounded-xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:w-auto">
+                          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
                             {[
                               { href: '/nodes/tools', label: 'AI & Digital Tools', desc: 'AI Writing, Image Gen, Data Analytics', color: '#8b5cf6' },
                               { href: '/nodes/resources', label: 'Resource Library', desc: 'E-Books, Video Courses, Templates', color: '#f59e0b' },
@@ -118,23 +120,23 @@ export default function Header() {
                     )}
                   </div>
 
-                  <Link href="/dashboard" className="rounded-md px-3 py-2 text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white">
+                  <Link href="/dashboard" className={`rounded-md px-3 py-2 text-sm font-medium ${isLanding ? 'text-zinc-800 drop-shadow-sm hover:bg-black/5 dark:text-white/90 dark:drop-shadow-lg dark:hover:bg-white/10' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white'}`}>
                     Earn
                   </Link>
-                  <Link href="/wallet" className="rounded-md px-3 py-2 text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white">
+                  <Link href="/wallet" className={`rounded-md px-3 py-2 text-sm font-medium ${isLanding ? 'text-zinc-800 drop-shadow-sm hover:bg-black/5 dark:text-white/90 dark:drop-shadow-lg dark:hover:bg-white/10' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white'}`}>
                     Wallet
                   </Link>
-                  <Link href="/movies" className="rounded-md px-3 py-2 text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white">
+                  <Link href="/movies" className={`rounded-md px-3 py-2 text-sm font-medium ${isLanding ? 'text-zinc-800 drop-shadow-sm hover:bg-black/5 dark:text-white/90 dark:drop-shadow-lg dark:hover:bg-white/10' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white'}`}>
                     Movies
                   </Link>
-                  <Link href="/nodes/promotion" className="rounded-md px-3 py-2 text-sm font-bold text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30">
+                  <Link href="/nodes/promotion" className={`rounded-md px-3 py-2 text-sm font-bold ${isLanding ? 'text-amber-600 drop-shadow-sm hover:bg-black/5 dark:text-amber-300 dark:drop-shadow-lg dark:hover:bg-white/10' : 'text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30'}`}>
                     &#9889; Promo
                   </Link>
 
                   <div className="relative">
                     <button
                       onClick={() => setBalanceOpen(!balanceOpen)}
-                      className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                      className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold ${isLanding ? 'hover:bg-white/10' : 'hover:bg-amber-50 dark:hover:bg-amber-950/30'} ${user.apex_balance >= 100 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                     >
                       <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
                       {user.apex_balance.toFixed(2)}
@@ -146,7 +148,7 @@ export default function Header() {
                           <div className="space-y-3">
                             <div>
                               <div className="text-xs text-zinc-500">{process.env.NEXT_PUBLIC_TOKEN_NAME || 'Tokens'}</div>
-                              <div className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                              <div className={`text-lg font-bold ${user.apex_balance >= 100 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {user.apex_balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                               </div>
                               <div className="text-xs text-zinc-400">
@@ -164,12 +166,10 @@ export default function Header() {
                                 className="flex-1 rounded-lg bg-zinc-900 py-2 text-center text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
                                 Deposit
                               </Link>
-                              {user.balance >= parseFloat(process.env.NEXT_PUBLIC_WITHDRAWAL_THRESHOLD || '200') && (
-                                <Link href="/withdraw" onClick={() => setBalanceOpen(false)}
-                                  className="flex-1 rounded-lg bg-green-600 py-2 text-center text-xs font-semibold text-white hover:bg-green-700">
-                                  Withdraw
-                                </Link>
-                              )}
+                              <Link href="/withdraw" onClick={() => setBalanceOpen(false)}
+                                className={`flex-1 rounded-lg py-2 text-center text-xs font-semibold text-white ${user.balance >= parseFloat(process.env.NEXT_PUBLIC_WITHDRAWAL_THRESHOLD || '200') ? 'bg-green-600 hover:bg-green-700' : 'bg-green-300 hover:bg-green-400'}`}>
+                                Withdraw
+                              </Link>
                             </div>
                           </div>
                         </div>
@@ -191,14 +191,14 @@ export default function Header() {
                       {user.username[0].toUpperCase()}
                     </div>
                   )}
-                  <span className="hidden text-sm font-medium sm:block">{user.username}</span>
+                  <span className={`hidden text-sm font-medium sm:block ${isLanding ? 'text-zinc-900 drop-shadow-sm dark:text-white dark:drop-shadow-lg' : 'text-zinc-900 dark:text-white'}`}>{user.username}</span>
                 </button>
                 {dropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
                     <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                       <Link href="/profile" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="12" r="4"/></svg>
                         Profile
                       </Link>
                       <Link href="/wallet" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800">
@@ -225,17 +225,17 @@ export default function Header() {
             </>
           ) : (
             <>
-              <Link href="/login" className="rounded-md px-3 py-2 text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white">
+              <Link href="/login" className={`rounded-md px-3 py-2 text-sm font-medium ${isLanding ? 'text-zinc-800 drop-shadow-sm hover:bg-black/5 dark:text-white/90 dark:drop-shadow-lg dark:hover:bg-white/10' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white'}`}>
                 Login
               </Link>
-              <Link href="/register" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
+              <Link href="/register" className={`rounded-md px-4 py-2 text-sm font-medium ${isLanding ? 'bg-zinc-800/80 text-white drop-shadow-sm backdrop-blur-sm hover:bg-zinc-800 dark:bg-white/20 dark:text-white dark:drop-shadow-lg dark:hover:bg-white/30' : 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'}`}>
                 Get Started
               </Link>
             </>
           )}
           <button
             onClick={toggle}
-            className="ml-1 flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className={`ml-1 flex h-9 w-9 items-center justify-center rounded-md border ${isLanding ? 'border-zinc-300 bg-white/80 text-zinc-700 backdrop-blur-sm hover:bg-white dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-800' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'}`}
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? <span className="text-lg">&#9788;</span> : <span className="text-lg">&#9790;</span>}

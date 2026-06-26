@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { toast } from '@/components/Toast';
 import { formatMoney, formatTokens } from '@/lib/utils';
-import { config } from '@/lib/config';
 
 interface DashboardProps {
   user: any;
@@ -14,11 +13,13 @@ interface DashboardProps {
   progressPercent: number;
   canWithdraw: boolean;
   threshold: number;
+  level1Rate: number;
+  level2Rate: number;
 }
 
 export default function DashboardClient({
   user, level1Count, level2Count, commissions, totalPaidOut,
-  progressPercent, canWithdraw, threshold,
+  progressPercent, canWithdraw, threshold, level1Rate, level2Rate,
 }: DashboardProps) {
   const refLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/register?ref=${user.referral_code}`;
 
@@ -40,7 +41,7 @@ export default function DashboardClient({
       <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-3">
           <h2 className="text-base font-semibold">Your Referral Link</h2>
-          <p className="text-xs text-zinc-500">Earn {config.level1CommissionRate * 100}% from direct referrals and {config.level2CommissionRate * 100}% from second-level referrals</p>
+          <p className="text-xs text-zinc-500">Earn {level1Rate * 100}% from direct referrals and {level2Rate * 100}% from second-level referrals</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input readOnly value={refLink} className="min-w-[200px] flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800" />
@@ -57,12 +58,12 @@ export default function DashboardClient({
         <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">Level 1</div>
           <div className="mt-1 text-2xl font-bold">{level1Count}</div>
-          <div className="text-xs text-zinc-500">{config.level1CommissionRate * 100}% commission each</div>
+          <div className="text-xs text-zinc-500">{level1Rate * 100}% commission each</div>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">Level 2</div>
           <div className="mt-1 text-2xl font-bold">{level2Count}</div>
-          <div className="text-xs text-zinc-500">{config.level2CommissionRate * 100}% commission each</div>
+          <div className="text-xs text-zinc-500">{level2Rate * 100}% commission each</div>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">Paid Out</div>
