@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/Toast';
 import { formatMoney, formatTokens } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -20,8 +20,14 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
 
+  const [depositStep, setDepositStep] = useState<'form' | 'loading' | 'iframe' | 'verifying'>('form');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [phone, setPhone] = useState('');
+  const [redirectUrl, setRedirectUrl] = useState('');
+  const [merchantRef, setMerchantRef] = useState('');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'KES';
-  const tokenNameDisplay = process.env.NEXT_PUBLIC_TOKEN_NAME || tokenName;
 
   useEffect(() => {
     const stored = localStorage.getItem('return_to');
@@ -30,6 +36,25 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
       setModalOpen(true);
     }
   }, []);
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'PESAPAL_DONE' && e.data?.orderTrackingId) {
+        handleDepositVerify(e.data.orderTrackingId);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
 
   const dismissReturn = () => {
     localStorage.removeItem('return_to');
@@ -60,33 +85,102 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
     } else toast.error(data.error || 'Transfer failed');
   };
 
-  const handleDeposit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const res = await fetch('/api/wallet/deposit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: form.get('amount') }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      toast.success(data.message);
-      afterSuccess();
-    } else toast.error(data.error || 'Deposit failed');
+  const resetDeposit = () => {
+    setDepositStep('form');
+    setDepositAmount('');
+    setPhone('');
+    setRedirectUrl('');
+    setMerchantRef('');
+  };
+
+  const handleDepositInitiate = async () => {
+    const amount = parseFloat(depositAmount);
+    if (!amount || amount < 10) {
+      toast.error('Minimum deposit is 10');
+      return;
+    }
+    if (!phone || phone.length < 9) {
+      toast.error('Enter a valid phone number');
+      return;
+    }
+    setDepositStep('loading');
+    try {
+      const res = await fetch('/api/pesapal/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, phone }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMerchantRef(data.merchantReference);
+        if (data.simulated) {
+          toast.success('DEV: Simulating deposit...');
+          const vres = await fetch('/api/pesapal/deposit-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderTrackingId: data.orderTrackingId, merchantReference: data.merchantReference }),
+          });
+          const vdata = await vres.json();
+          if (vdata.success) {
+            toast.success(vdata.message);
+            afterSuccess();
+          } else {
+            toast.error(vdata.error || 'Deposit failed');
+            setDepositStep('form');
+          }
+          return;
+        }
+        setRedirectUrl(data.redirectUrl);
+        setDepositStep('iframe');
+      } else {
+        toast.error(data.error || 'Failed to initiate deposit');
+        setDepositStep('form');
+      }
+    } catch {
+      toast.error('Network error');
+      setDepositStep('form');
+    }
+  };
+
+  const handleDepositVerify = async (otid: string) => {
+    setDepositStep('verifying');
+    try {
+      const res = await fetch('/api/pesapal/deposit-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderTrackingId: otid, merchantReference: merchantRef }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setTimeout(() => afterSuccess(), 1000);
+      } else {
+        toast.error(data.error || 'Deposit verification failed');
+        setDepositStep('iframe');
+      }
+    } catch {
+      toast.error('Network error');
+      setDepositStep('iframe');
+    }
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    resetDeposit();
   };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Wallet</h1>
-        <p className="text-sm text-zinc-500">1 {currency} = {conversionRate} {tokenNameDisplay}</p>
+        <p className="text-sm text-zinc-500">1 {currency} = {conversionRate} {tokenName}</p>
       </div>
 
       <div className="relative mb-6 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-purple-500/5 dark:bg-purple-500/10" />
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">{tokenNameDisplay} Wallet Balance</div>
+            <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">{tokenName} Wallet Balance</div>
             <div className="mt-1 text-3xl font-bold text-purple-600 dark:text-purple-400">{formatTokens(apexBalance)}</div>
             <div className="mt-1 text-sm text-zinc-500">&asymp; {currency} {(apexBalance / conversionRate).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
           </div>
@@ -98,24 +192,25 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
             <div className="w-px bg-zinc-200 dark:bg-zinc-700" />
             <div>
               <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">Conversion Rate</div>
-              <div className="text-sm font-bold">1 {currency} = {conversionRate} {tokenNameDisplay}</div>
+              <div className="text-sm font-bold">1 {currency} = {conversionRate} {tokenName}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <button onClick={() => setModalOpen(true)}
+      <button onClick={() => { setModalOpen(true); setTab('deposit'); resetDeposit(); }}
         className="mb-6 w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
         <svg className="mr-2 inline h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
         Add Wallet Tokens
       </button>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setModalOpen(false)}>
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl dark:bg-zinc-900" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Add Tokens</h2>
-              <button onClick={() => setModalOpen(false)} className="text-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white">&times;</button>
+              <button onClick={closeModal} className="text-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white">&times;</button>
             </div>
             <div className="mb-4 flex items-center gap-3 rounded-lg bg-zinc-50 px-3 py-2 text-xs dark:bg-zinc-800">
               <span>{currency} Balance: <strong>{formatMoney(balance)}</strong></span>
@@ -124,10 +219,10 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
             </div>
 
             <div className="mb-4 flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
-              <button onClick={() => setTab('convert')} className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition ${tab === 'convert' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white' : 'text-zinc-500'}`}>
+              <button onClick={() => { setTab('convert'); resetDeposit(); }} className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition ${tab === 'convert' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white' : 'text-zinc-500'}`}>
                 Convert Balance
               </button>
-              <button onClick={() => setTab('deposit')} className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition ${tab === 'deposit' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white' : 'text-zinc-500'}`}>
+              <button onClick={() => { setTab('deposit'); resetDeposit(); }} className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition ${tab === 'deposit' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white' : 'text-zinc-500'}`}>
                 Direct Deposit
               </button>
             </div>
@@ -149,23 +244,61 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
                   Convert to Tokens
                 </button>
               </form>
+            ) : depositStep === 'iframe' ? (
+              <div>
+                <div className="mb-3 flex items-center justify-between text-sm">
+                  <span className="font-medium">{parseFloat(depositAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })} {currency}</span>
+                  <span className="text-xs text-zinc-400">Complete payment below</span>
+                </div>
+                <div className="h-[500px] w-full overflow-hidden rounded-lg border dark:border-zinc-700">
+                  <iframe
+                    ref={iframeRef}
+                    src={redirectUrl}
+                    className="h-full w-full border-0"
+                    title="PesaPal Payment"
+                    allow="payment *"
+                  />
+                </div>
+              </div>
+            ) : depositStep === 'loading' || depositStep === 'verifying' ? (
+              <div className="py-12 text-center">
+                <svg className="mx-auto mb-3 h-8 w-8 animate-spin text-green-600" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <p className="text-sm text-zinc-500">{depositStep === 'loading' ? 'Connecting to PesaPal...' : 'Verifying payment...'}</p>
+              </div>
             ) : (
-              <form onSubmit={handleDeposit} className="space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Amount in {currency}</label>
                   <div className="flex">
                     <span className="flex items-center rounded-l-lg border border-r-0 border-zinc-300 bg-zinc-50 px-3 text-sm font-semibold dark:border-zinc-600 dark:bg-zinc-800">{currency}</span>
-                    <input type="number" name="amount" min="1" step="0.01" required placeholder="0.00"
+                    <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} min="10" step="1" required placeholder="100"
                       className="flex-1 rounded-r-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900" />
                   </div>
                 </div>
-                <button type="submit"
-                  className="w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700">
-                  Deposit Tokens
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Phone Number (M-Pesa)</label>
+                  <div className="flex rounded-lg border border-zinc-300 dark:border-zinc-600">
+                    <span className="flex items-center rounded-l-lg bg-zinc-100 px-3 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">+254</span>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="712345678"
+                      maxLength={9}
+                      className="w-full rounded-r-lg px-3 py-2.5 text-sm outline-none dark:bg-zinc-800"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleDepositInitiate}
+                  className="w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+                >
+                  Deposit via M-Pesa
                 </button>
-                <p className="text-center text-xs text-zinc-500">Payment gateway coming soon — simulated deposit</p>
-              </form>
+                <p className="text-center text-xs text-zinc-500">Powered by PesaPal</p>
+              </div>
             )}
+            </div>
           </div>
         </div>
       )}
