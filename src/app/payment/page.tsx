@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from '@/components/Toast';
-import SasapayModal from '@/components/SasapayModal';
+import PesapalModal from '@/components/PesapalModal';
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -25,14 +25,14 @@ export default function PaymentPage() {
           {parseFloat(process.env.NEXT_PUBLIC_ACTIVATION_FEE || '500').toLocaleString('en-US', { minimumFractionDigits: 2 })} {process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'KES'}
         </div>
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Pay the activation fee via M-Pesa to unlock your dashboard and start earning commissions.
+          Pay the activation fee via M-Pesa, Airtel Money, or card to unlock your dashboard and start earning commissions.
         </p>
 
         <button
           onClick={() => setShowModal(true)}
           className="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-green-700"
         >
-          Pay with M-Pesa
+          Pay with M-Pesa / Card
         </button>
 
         <div className="mt-6">
@@ -49,9 +49,8 @@ export default function PaymentPage() {
         </div>
       </div>
 
-      <SasapayModal
+      <PesapalModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
         amount={parseFloat(process.env.NEXT_PUBLIC_ACTIVATION_FEE || '500')}
         currency={process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'KES'}
         onSuccess={handleSuccess}
