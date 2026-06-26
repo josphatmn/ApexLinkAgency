@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     if (txns.length > 0) {
       const txn = txns[0] as any;
       await execute('UPDATE users SET balance = balance + ? WHERE id = ?', [txn.amount, txn.user_id]);
-      await execute("UPDATE transactions SET status = 'failed' WHERE id = ?", [id]);
+      await execute("UPDATE transactions SET status = 'rejected' WHERE id = ?", [id]);
       return NextResponse.json({ success: true, message: 'Withdrawal rejected, balance restored.' });
     }
     return NextResponse.json({ success: false, error: 'Withdrawal not found' }, { status: 404 });

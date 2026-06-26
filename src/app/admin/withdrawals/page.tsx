@@ -36,10 +36,10 @@ export default function AdminWithdrawalsPage() {
   useEffect(() => { fetchWithdrawals(); }, [activeTab]);
 
   const handleAction = async (id: number, action: 'approve' | 'reject') => {
-    const res = await fetch('/api/admin/withdrawals/process', {
+    const res = await fetch('/api/admin/withdrawals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ withdrawal_id: id, action }),
+      body: JSON.stringify({ id, action }),
     });
     const d = await res.json();
     if (d.success) {
