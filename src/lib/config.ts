@@ -14,6 +14,7 @@ export const config = {
   promotionWinnerPercentage: parseFloat(process.env.PROMOTION_WINNER_PERCENTAGE || '0.70'),
   promotionIntervalMinutes: parseInt(process.env.PROMOTION_INTERVAL_MINUTES || '30'),
   mediaAccessCost: parseInt(process.env.MEDIA_ACCESS_COST || '50'),
+  incomePerPage: parseInt(process.env.INCOME_PER_PAGE || '20'),
   jwtSecret: process.env.JWT_SECRET || 'apexlink-jwt-secret',
 };
 

@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { toast } from '@/components/Toast';
 
 interface IncomeEntry {
@@ -16,26 +18,28 @@ const sourceLabels: Record<string, string> = {
   commission_margin: 'Commission Margin',
   withdrawal_fee: 'Withdrawal Fees',
   promotion: 'Promotion Platform Cut',
+  media_movie: 'Movie Purchases',
+  media_tv: 'TV Show Purchases',
 };
-
-const sourceOptions = ['All', ...Object.keys(sourceLabels)];
 
 export default function AdminIncomePage() {
   const [entries, setEntries] = useState<IncomeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sourceFilter, setSourceFilter] = useState('All');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totals, setTotals] = useState<Record<string, number>>({});
+  const [sources, setSources] = useState<string[]>([]);
+  const [perPage, setPerPage] = useState(20);
 
   const fetchIncome = () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: '20' });
     if (sourceFilter !== 'All') params.set('source', sourceFilter);
-    if (dateFrom) params.set('date_from', dateFrom);
-    if (dateTo) params.set('date_to', dateTo);
+    if (dateFrom) params.set('date_from', dateFrom.toISOString().slice(0, 10));
+    if (dateTo) params.set('date_to', dateTo.toISOString().slice(0, 10));
 
     fetch(`/api/admin/income?${params}`)
       .then(r => r.json())
@@ -44,6 +48,8 @@ export default function AdminIncomePage() {
           setEntries(d.entries);
           setTotalPages(d.totalPages || 1);
           setTotals(d.totals || {});
+          if (d.sources) setSources(d.sources);
+          if (d.perPage) setPerPage(d.perPage);
         } else {
           toast.error('Failed to load income data');
         }
@@ -58,6 +64,13 @@ export default function AdminIncomePage() {
     e.preventDefault();
     setPage(1);
     fetchIncome();
+  };
+
+  const handleReset = () => {
+    setSourceFilter('All');
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setPage(1);
   };
 
   const totalAll = Object.values(totals).reduce((sum, v) => sum + v, 0);
@@ -77,31 +90,49 @@ export default function AdminIncomePage() {
             onChange={e => setSourceFilter(e.target.value)}
             className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
           >
-            {sourceOptions.map(s => (
-              <option key={s} value={s}>{sourceLabels[s] || s}</option>
+            {['All', ...sources].map(s => (
+              <option key={s} value={s}>{sourceLabels[s] || s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
             ))}
           </select>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-500">From</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
+          <DatePicker
+            selected={dateFrom}
+            onChange={(d: Date | null) => setDateFrom(d || undefined)}
+            selectsStart
+            startDate={dateFrom}
+            endDate={dateTo}
+            maxDate={dateTo || new Date()}
+            placeholderText="From"
+            dateFormat="yyyy-MM-dd"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
+            wrapperClassName="w-full"
+            popperClassName="dark"
           />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-500">To</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
+          <DatePicker
+            selected={dateTo}
+            onChange={(d: Date | null) => setDateTo(d || undefined)}
+            selectsEnd
+            startDate={dateFrom}
+            endDate={dateTo}
+            minDate={dateFrom}
+            maxDate={new Date()}
+            placeholderText="To"
+            dateFormat="yyyy-MM-dd"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
+            wrapperClassName="w-full"
+            popperClassName="dark"
           />
         </div>
         <button type="submit" className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-200">
           Filter
+        </button>
+        <button type="button" onClick={handleReset} className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-400 hover:bg-zinc-800">
+          Reset
         </button>
       </form>
 

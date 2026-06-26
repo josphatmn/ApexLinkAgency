@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { execute, query } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, setSession } from '@/lib/auth';
 import { config } from '@/lib/config';
 import { randomHex } from '@/lib/utils';
 import { RowDataPacket } from 'mysql2';
@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await execute('UPDATE users SET activated = 1, activated_at = NOW() WHERE id = ?', [session.userId]);
+    await setSession({ userId: session.userId, username: session.username, activated: true });
 
     let totalCommission = 0;
 

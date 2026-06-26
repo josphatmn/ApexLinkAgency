@@ -45,9 +45,16 @@ export default function PaymentPage() {
           {loading ? 'Processing...' : '\u2713 Simulate Payment'}
         </button>
         <div className="mt-6">
-          <a href="/api/auth/logout" className="text-sm text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+          <button
+            onClick={async () => {
+              await fetch('/api/auth/logout');
+              toast.success('Logged out successfully');
+              setTimeout(() => window.location.href = '/login', 500);
+            }}
+            className="text-sm text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
             Cancel and logout
-          </a>
+          </button>
         </div>
       </div>
     </div>

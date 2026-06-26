@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getDetails, getImageUrl, getBackdropUrl } from '@/lib/tmdb';
+import { getDetails, getImageUrl, getBackdropUrl, getSeasonEpisodes } from '@/lib/tmdb';
 import { toast } from '@/components/Toast';
 
 export default function DetailContent() {
@@ -14,6 +14,11 @@ export default function DetailContent() {
   const [loading, setLoading] = useState(true);
   const [access, setAccess] = useState<boolean | null>(null);
   const [purchasing, setPurchasing] = useState(false);
+  const [insufficientError, setInsufficientError] = useState<string | null>(null);
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
+  const [seasonEpisodes, setSeasonEpisodes] = useState<any>(null);
+  const [seasonLoading, setSeasonLoading] = useState(false);
 
   const id = Number(params.id);
   const type = (searchParams.get('type') || 'movie') as 'movie' | 'tv';
@@ -36,6 +41,7 @@ export default function DetailContent() {
   const handlePurchase = useCallback(async () => {
     if (!data) return;
     setPurchasing(true);
+    setInsufficientError(null);
     try {
       const title = data.title || data.name || '';
       const path = data.poster_path || null;
@@ -48,6 +54,8 @@ export default function DetailContent() {
       if (d.success) {
         toast.success(d.message);
         setAccess(true);
+      } else if (d.error?.toLowerCase().includes('insufficient') || d.error?.toLowerCase().includes('need')) {
+        setInsufficientError(d.error);
       } else {
         toast.error(d.error || 'Purchase failed');
       }
@@ -95,6 +103,22 @@ export default function DetailContent() {
   const producers = crew.filter((c: any) => c.job === 'Producer' || c.job === 'Executive Producer');
   const writers = crew.filter((c: any) => c.job === 'Writer' || c.job === 'Screenplay');
   const trailer = data.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+  const tvSeasons = type === 'tv' ? (data.seasons || []).filter((s: any) => s.season_number > 0) : [];
+
+  const toggleSeason = async (seasonNumber: number) => {
+    if (expandedSeason === seasonNumber) {
+      setExpandedSeason(null);
+      setSeasonEpisodes(null);
+      return;
+    }
+    setExpandedSeason(seasonNumber);
+    setSeasonLoading(true);
+    try {
+      const data2 = await getSeasonEpisodes(id, seasonNumber);
+      setSeasonEpisodes(data2);
+    } catch {}
+    setSeasonLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950">
@@ -110,12 +134,12 @@ export default function DetailContent() {
           )}
         </div>
 
-        <button onClick={() => router.back()} className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-xl bg-black/50 px-3.5 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-black/70 active:scale-95">
+        <Link href={`/movies`} className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-xl bg-black/50 px-3.5 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-black/70 active:scale-95">
           <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Back
-        </button>
+        </Link>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 pb-8">
 
@@ -167,11 +191,11 @@ export default function DetailContent() {
 
               {trailer && (
                 <div className="mt-5">
-                  <a href={`https://www.youtube.com/watch?v=${trailer.key}`} target="_blank" rel="noreferrer"
+                  <button onClick={() => setTrailerOpen(true)}
                     className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-red-700 active:scale-95">
                     <svg className="size-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z" /></svg>
                     Watch Trailer
-                  </a>
+                  </button>
                 </div>
               )}
 
@@ -188,7 +212,7 @@ export default function DetailContent() {
                     <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
-                    {purchasing ? 'Processing...' : `Pay ${process.env.NEXT_PUBLIC_MEDIA_ACCESS_COST || '50'} Tokens`}
+                    {purchasing ? 'Processing...' : `Pay ${process.env.NEXT_PUBLIC_MEDIA_ACCESS_COST || '50'} ${process.env.NEXT_PUBLIC_TOKEN_NAME || 'Tokens'}`}
                   </button>
                 ) : (
                   <div className="h-10 w-44 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
@@ -206,6 +230,84 @@ export default function DetailContent() {
               <section>
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Overview</h2>
                 <p className="mt-2 text-base leading-relaxed text-zinc-700 dark:text-zinc-300">{data.overview}</p>
+              </section>
+            )}
+
+            {type === 'tv' && tvSeasons.length > 0 && (
+              <section className="mt-10">
+                <h2 className="mb-4 text-lg font-bold text-zinc-900 dark:text-white">Seasons & Episodes</h2>
+                <div className="space-y-2">
+                  {tvSeasons.map((s: any) => {
+                    const isOpen = expandedSeason === s.season_number;
+                    return (
+                      <div key={s.season_number} className="rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                        <button
+                          onClick={() => toggleSeason(s.season_number)}
+                          className="flex w-full items-center justify-between px-5 py-3.5 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                        >
+                          <div>
+                            <span className="text-sm font-semibold text-zinc-900 dark:text-white">{s.name}</span>
+                            <span className="ml-2 text-xs text-zinc-500">{s.episode_count} episodes</span>
+                          </div>
+                          <svg className={`size-4 text-zinc-400 transition ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-zinc-200 dark:border-zinc-700">
+                            {seasonLoading ? (
+                              <div className="flex items-center justify-center py-8">
+                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-white" />
+                              </div>
+                            ) : seasonEpisodes?.episodes?.length > 0 ? (
+                              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                {seasonEpisodes.episodes.map((ep: any) => (
+                                  <div key={ep.episode_number} className="flex items-center gap-4 px-5 py-3">
+                                    {ep.still_path ? (
+                                      <img src={`https://image.tmdb.org/t/p/w185${ep.still_path}`} alt=""
+                                        className="hidden w-28 shrink-0 rounded-lg sm:block" />
+                                    ) : (
+                                      <div className="hidden w-28 shrink-0 rounded-lg bg-zinc-200 sm:block aspect-video dark:bg-zinc-700" />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium text-zinc-400">E{ep.episode_number}</span>
+                                        {access === true ? (
+                                          <Link href={`/play/${id}?type=tv&season=${s.season_number}&episode=${ep.episode_number}`}
+                                            className="truncate text-sm font-semibold text-zinc-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400">
+                                            {ep.name}
+                                          </Link>
+                                        ) : (
+                                          <span className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{ep.name}</span>
+                                        )}
+                                      </div>
+                                      {ep.overview && (
+                                        <p className="mt-0.5 line-clamp-1 text-xs text-zinc-500">{ep.overview}</p>
+                                      )}
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                      {access === true ? (
+                                        <Link href={`/play/${id}?type=tv&season=${s.season_number}&episode=${ep.episode_number}`}
+                                          className="inline-flex items-center gap-1 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
+                                          <svg className="size-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                          Play
+                                        </Link>
+                                      ) : (
+                                        <span className="text-xs text-zinc-400">{ep.runtime ? `${ep.runtime}m` : ''}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="px-5 py-6 text-center text-sm text-zinc-500">No episode details available.</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </section>
             )}
 
@@ -324,6 +426,49 @@ export default function DetailContent() {
           </Link>
         </div>
       </div>
+
+      {trailerOpen && trailer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setTrailerOpen(false)}>
+          <div className="relative w-full max-w-4xl" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setTrailerOpen(false)} className="absolute -top-10 right-0 text-sm text-zinc-400 hover:text-white">
+              Close &times;
+            </button>
+            <div className="relative aspect-video overflow-hidden rounded-xl bg-black shadow-2xl">
+              <iframe
+                src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&rel=0`}
+                title="Trailer"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                className="size-full"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {insufficientError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setInsufficientError(null)}>
+          <div className="mx-4 w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-2xl dark:border-red-900 dark:bg-zinc-900" onClick={e => e.stopPropagation()}>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">
+              <svg className="h-7 w-7 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-bold text-zinc-900 dark:text-white">Insufficient Tokens</h3>
+            <p className="mb-6 text-center text-sm text-zinc-600 dark:text-zinc-400">{insufficientError}</p>
+            <div className="flex gap-3">
+              <Link href="/wallet" onClick={() => { localStorage.setItem('return_to', window.location.pathname + window.location.search); setInsufficientError(null); }}
+                className="flex-1 rounded-xl bg-zinc-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
+                Deposit Tokens
+              </Link>
+              <button onClick={() => setInsufficientError(null)}
+                className="flex-1 rounded-xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

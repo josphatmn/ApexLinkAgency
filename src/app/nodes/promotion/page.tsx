@@ -8,7 +8,8 @@ export default function PromotionPage() {
   const [data, setData] = useState<any>(null);
   const [betAmount, setBetAmount] = useState('');
   const [betting, setBetting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState('');
+  const [timeLeft, setTimeLeft] = useState('00:00:00');
+  const [expired, setExpired] = useState(false);
   const [enabled, setEnabled] = useState(true);
 
   const fetchData = () => {
@@ -29,20 +30,34 @@ export default function PromotionPage() {
     const interval = (data.config?.intervalMinutes || 30) * 60 * 1000;
     const nextDraw = started + interval;
 
+    const origTitle = 'APEX Promotion';
+
     const tick = () => {
       const diff = Math.max(0, Math.floor((nextDraw - Date.now()) / 1000));
       const h = Math.floor(diff / 3600);
       const m = Math.floor((diff % 3600) / 60);
       const s = diff % 60;
-      setTimeLeft(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+      const fmt = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      setTimeLeft(fmt);
+      document.title = fmt + ' \u2014 ' + origTitle;
+      const hEl = document.getElementById('cdHours');
+      if (hEl) hEl.textContent = String(h).padStart(2, '0');
+      const mEl = document.getElementById('cdMinutes');
+      if (mEl) mEl.textContent = String(m).padStart(2, '0');
+      const sEl = document.getElementById('cdSeconds');
+      if (sEl) sEl.textContent = String(s).padStart(2, '0');
       if (diff <= 0) {
-        setTimeLeft('Draw in progress...');
+        setExpired(true);
+        document.title = 'Draw in progress! \u2014 ' + origTitle;
         setTimeout(fetchData, 3000);
       }
     };
     tick();
     const iv = setInterval(tick, 1000);
-    return () => clearInterval(iv);
+    return () => {
+      clearInterval(iv);
+      document.title = origTitle;
+    };
   }, [data?.activeRound]);
 
   const handleBet = async (e: React.FormEvent) => {
@@ -97,6 +112,35 @@ export default function PromotionPage() {
         <p className="mt-2 text-zinc-500">Bet your {data?.config?.tokenName || 'tokens'} and win big every round</p>
       </div>
 
+      {/* Countdown Hero */}
+      <div className="relative mb-8 overflow-hidden rounded-2xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-50 via-white to-amber-50 p-8 text-center dark:from-amber-950/20 dark:via-zinc-900 dark:to-amber-950/20">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(251,191,36,0.08),transparent_70%)]" />
+        <div className="relative">
+          <div className="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400">Next Draw In</div>
+          <div className="mx-auto mb-6 flex items-center justify-center gap-1 font-mono">
+            <div className="flex flex-col items-center rounded-xl bg-white/80 px-5 py-3 shadow-sm backdrop-blur dark:bg-zinc-800/80 min-w-[5.5rem]">
+              <span id="cdHours" className="text-4xl font-black tabular-nums leading-none lg:text-5xl">{timeLeft.split(':')[0] || '00'}</span>
+              <span className="mt-1 text-[0.6rem] font-semibold uppercase tracking-widest text-zinc-400">Hrs</span>
+            </div>
+            <span className="mb-6 text-3xl font-light text-amber-500 animate-cd-pulse lg:text-4xl">:</span>
+            <div className="flex flex-col items-center rounded-xl bg-white/80 px-5 py-3 shadow-sm backdrop-blur dark:bg-zinc-800/80 min-w-[5.5rem]">
+              <span id="cdMinutes" className="text-4xl font-black tabular-nums leading-none lg:text-5xl">{timeLeft.split(':')[1] || '00'}</span>
+              <span className="mt-1 text-[0.6rem] font-semibold uppercase tracking-widest text-zinc-400">Min</span>
+            </div>
+            <span className="mb-6 text-3xl font-light text-amber-500 animate-cd-pulse lg:text-4xl">:</span>
+            <div className="flex flex-col items-center rounded-xl bg-white/80 px-5 py-3 shadow-sm backdrop-blur dark:bg-zinc-800/80 min-w-[5.5rem]">
+              <span id="cdSeconds" className="text-4xl font-black tabular-nums leading-none lg:text-5xl">{timeLeft.split(':')[2] || '00'}</span>
+              <span className="mt-1 text-[0.6rem] font-semibold uppercase tracking-widest text-zinc-400">Sec</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-6 text-xs text-zinc-500">
+            <span>&#8226; Round #{activeRound?.id || '--'}</span>
+            <span>&#8226; Pool: {formatTokens(activeRound?.total_pot || 0)}</span>
+            <span>&#8226; Winner gets {(data?.config?.winnerPercentage || 0.7) * 100}%</span>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
@@ -119,18 +163,24 @@ export default function PromotionPage() {
                   </div>
                   <div className="rounded-lg bg-zinc-50 p-4 text-center dark:bg-zinc-800">
                     <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">Time Left</div>
-                    <div className="font-mono text-lg font-bold">{timeLeft || '...'}</div>
+                    <div className="font-mono text-lg font-bold text-amber-600 dark:text-amber-400">{timeLeft || '...'}</div>
                   </div>
                 </div>
 
-                <form onSubmit={handleBet} className="flex gap-3">
-                  <input type="number" value={betAmount} onChange={e => setBetAmount(e.target.value)} placeholder={`Amount in ${data?.config?.tokenName || 'tokens'}`} required min="1"
-                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900" />
-                  <button type="submit" disabled={betting}
-                    className="rounded-lg bg-amber-600 px-6 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50">
-                    {betting ? 'Placing...' : 'Place Bet'}
-                  </button>
-                </form>
+                {expired ? (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-center text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                    This round has ended. Bets are closed until the draw is completed and a new round begins.
+                  </div>
+                ) : (
+                  <form onSubmit={handleBet} className="flex gap-3">
+                    <input type="number" value={betAmount} onChange={e => setBetAmount(e.target.value)} placeholder={`Amount in ${data?.config?.tokenName || 'tokens'}`} required min="1"
+                      className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900" />
+                    <button type="submit" disabled={betting}
+                      className="rounded-lg bg-amber-600 px-6 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50">
+                      {betting ? 'Placing...' : 'Place Bet'}
+                    </button>
+                  </form>
+                )}
 
                 {bets.length > 0 && (
                   <div className="mt-6">

@@ -31,6 +31,10 @@ export async function getDetails(type: 'movie' | 'tv', id: number) {
   return tmdb(`/${type}/${id}`, { append_to_response: 'credits,videos' });
 }
 
+export async function getSeasonEpisodes(tvId: number, seasonNumber: number) {
+  return tmdb(`/tv/${tvId}/season/${seasonNumber}`);
+}
+
 export async function getGenres(type: 'movie' | 'tv') {
   return tmdb(`/genre/${type}/list`);
 }

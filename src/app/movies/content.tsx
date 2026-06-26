@@ -23,6 +23,20 @@ export default function MoviesContent() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [genres, setGenres] = useState<{ id: number; name: string }[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [library, setLibrary] = useState<any[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+
+  const openLibrary = async () => {
+    setLibraryOpen(true);
+    setLibraryLoading(true);
+    try {
+      const res = await fetch('/api/media/library');
+      const d = await res.json();
+      if (d.success) setLibrary(d.items);
+    } catch {}
+    setLibraryLoading(false);
+  };
 
   const query = sp.get('q') || '';
   const mediaType = sp.get('type') || 'all';
@@ -142,6 +156,15 @@ export default function MoviesContent() {
           <option value="">Year</option>
           {YEAR_RANGE.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
+
+        <button onClick={openLibrary}
+          className="group relative flex items-center gap-2 overflow-hidden rounded-lg bg-gradient-to-r from-purple-600 via-violet-500 to-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30 active:scale-95">
+          <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition group-hover:translate-x-full duration-700" />
+          <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          My Library
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
@@ -192,6 +215,64 @@ export default function MoviesContent() {
       )}
 
       <div ref={sentinelRef} className="h-4" />
+
+      {libraryOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setLibraryOpen(false)}>
+          <div className="mx-4 flex h-[80vh] w-full max-w-3xl flex-col rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-700">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white">My Library</h2>
+              <button onClick={() => setLibraryOpen(false)} className="text-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white">&times;</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {libraryLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-white" />
+                </div>
+              ) : library.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-16 text-center">
+                  <svg className="size-12 text-zinc-300 dark:text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <p className="text-sm text-zinc-500">No purchased content yet.</p>
+                  <p className="text-xs text-zinc-400">Browse movies and TV shows, then pay with tokens to add them here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                  {library.map((item: any) => {
+                    const poster = item.poster_path
+                      ? `https://image.tmdb.org/t/p/w342${item.poster_path}`
+                      : null;
+                    return (
+                      <Link key={item.id} href={`/play/${item.media_id}?type=${item.media_type}`}
+                        className="group rounded-xl border border-zinc-200 bg-white transition hover:shadow-lg dark:border-zinc-700 dark:bg-zinc-800/50"
+                        onClick={() => setLibraryOpen(false)}>
+                        <div className="relative aspect-[2/3] overflow-hidden rounded-t-xl bg-zinc-100 dark:bg-zinc-800">
+                          {poster ? (
+                            <img src={poster} alt={item.title} className="size-full object-cover transition group-hover:scale-105" loading="lazy" />
+                          ) : (
+                            <div className="flex size-full items-center justify-center text-zinc-400">
+                              <svg className="size-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                              </svg>
+                            </div>
+                          )}
+                          <div className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium uppercase text-white">
+                            {item.media_type === 'tv' ? 'TV' : 'Movie'}
+                          </div>
+                        </div>
+                        <div className="p-3">
+                          <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{item.title}</h3>
+                          <p className="text-xs text-zinc-500">{new Date(item.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

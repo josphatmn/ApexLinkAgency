@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { config } from '@/lib/config';
 
 async function checkAdmin() {
   const cookieStore = await cookies();
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
   const dateFrom = url.searchParams.get('date_from') || '';
   const dateTo = url.searchParams.get('date_to') || '';
   const pageNum = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
-  const perPage = 30;
+  const perPage = config.incomePerPage;
 
   const where: string[] = [];
   const params: any[] = [];
@@ -51,13 +52,19 @@ export async function GET(req: Request) {
     totals[r.source] = parseFloat(r.total);
   }
 
+  const distinctSources = await query<RowDataPacket[]>(
+    'SELECT DISTINCT source FROM platform_income ORDER BY source'
+  );
+
   return NextResponse.json({
     success: true,
     entries: rows,
     total,
     totalPages,
+    perPage,
     page: pageNum,
     totals,
+    sources: distinctSources.map(r => r.source),
   });
 }
 

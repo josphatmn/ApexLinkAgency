@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import Header from '@/components/Header';
+import ConditionalHeader from '@/components/ConditionalHeader';
 import { ToastContainer } from '@/components/Toast';
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ThemeProvider>
-          <Header />
+          <ConditionalHeader />
           <main>{children}</main>
           <ToastContainer />
         </ThemeProvider>

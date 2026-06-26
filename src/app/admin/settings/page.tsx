@@ -20,6 +20,8 @@ const envFields: EnvEntry[] = [
   { key: 'APEX_CONVERSION_RATE', label: 'Apex Conversion Rate', value: '' },
   { key: 'PROMOTION_WINNER_PERCENTAGE', label: 'Promotion Winner %', value: '' },
   { key: 'PROMOTION_INTERVAL_MINUTES', label: 'Promotion Interval (min)', value: '' },
+  { key: 'MEDIA_ACCESS_COST', label: 'Media Access Cost (tokens)', value: '' },
+  { key: 'INCOME_PER_PAGE', label: 'Income Per Page', value: '' },
   { key: 'SITE_URL', label: 'Site URL', value: '' },
 ];
 

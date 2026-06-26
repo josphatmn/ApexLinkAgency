@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from '@/components/Toast';
 import { formatMoney, formatTokens } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   balance: number;
@@ -13,8 +14,36 @@ interface Props {
 }
 
 export default function WalletClient({ balance, apexBalance, transactions, conversionRate, tokenName }: Props) {
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [tab, setTab] = useState<'convert' | 'deposit'>('convert');
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+
+  const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'KES';
+  const tokenNameDisplay = process.env.NEXT_PUBLIC_TOKEN_NAME || tokenName;
+
+  useEffect(() => {
+    const stored = localStorage.getItem('return_to');
+    if (stored) {
+      setReturnUrl(stored);
+      setModalOpen(true);
+    }
+  }, []);
+
+  const dismissReturn = () => {
+    localStorage.removeItem('return_to');
+    setReturnUrl(null);
+  };
+
+  const afterSuccess = () => {
+    if (returnUrl) {
+      setModalOpen(false);
+      setShowReturnModal(true);
+    } else {
+      setTimeout(() => window.location.reload(), 800);
+    }
+  };
 
   const handleTransfer = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,7 +56,7 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
     const data = await res.json();
     if (data.success) {
       toast.success(data.message);
-      setTimeout(() => window.location.reload(), 1200);
+      afterSuccess();
     } else toast.error(data.error || 'Transfer failed');
   };
 
@@ -42,12 +71,9 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
     const data = await res.json();
     if (data.success) {
       toast.success(data.message);
-      setTimeout(() => window.location.reload(), 1200);
+      afterSuccess();
     } else toast.error(data.error || 'Deposit failed');
   };
-
-  const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'KES';
-  const tokenNameDisplay = process.env.NEXT_PUBLIC_TOKEN_NAME || tokenName;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -140,6 +166,30 @@ export default function WalletClient({ balance, apexBalance, transactions, conve
                 <p className="text-center text-xs text-zinc-500">Payment gateway coming soon — simulated deposit</p>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {showReturnModal && returnUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+              <svg className="h-7 w-7 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-bold text-zinc-900 dark:text-white">Tokens Added Successfully</h3>
+            <p className="mb-6 text-center text-sm text-zinc-600 dark:text-zinc-400">Return to the page you were viewing?</p>
+            <div className="flex gap-3">
+              <button onClick={() => { router.push(returnUrl); dismissReturn(); }}
+                className="flex-1 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
+                Yes
+              </button>
+              <button onClick={() => { dismissReturn(); window.location.reload(); }}
+                className="flex-1 rounded-xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                No
+              </button>
+            </div>
           </div>
         </div>
       )}

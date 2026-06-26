@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireActivated } from '@/lib/api-utils';
 import { execute, query } from '@/lib/db';
 import { config } from '@/lib/config';
+import { randomHex } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
   const session = await requireActivated();
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
   await execute('UPDATE users SET apex_balance = apex_balance - ? WHERE id = ?', [cost, session.userId]);
   await execute('INSERT INTO media_access (user_id, media_id, media_type, title, poster_path, cost, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [session.userId, media_id, media_type, title, poster_path || null, cost, now]);
   await execute('INSERT INTO transactions (user_id, type, amount, reference, status, created_at) VALUES (?, ?, ?, ?, ?, ?)', [session.userId, 'transfer', cost, `media-${media_type}-${media_id}`, 'completed', now]);
+  const incomeSource = media_type === 'movie' ? 'media_movie' : 'media_tv';
+  await execute("INSERT INTO platform_income (source, amount, reference, created_at) VALUES (?, ?, ?, ?)", [incomeSource, cost, `media-${media_type}-${media_id}-${randomHex(4).toUpperCase()}`, now]);
 
   return NextResponse.json({
     success: true,
