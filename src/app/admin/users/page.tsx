@@ -73,15 +73,18 @@ export default function AdminUsersPage() {
     e.preventDefault();
     if (!editUser) return;
     setSubmitting(true);
-    const form = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     const res = await fetch('/api/admin/users/edit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: editUser.id,
-        fullname: form.get('fullname') || null,
-        email: form.get('email') || null,
-        phone: form.get('phone') || null,
+        fullname: formData.get('fullname') || null,
+        email: formData.get('email') || null,
+        phone: formData.get('phone') || null,
+        activated: (form.querySelector('[name=activated]') as HTMLInputElement)?.checked || false,
+        add_balance: formData.get('add_balance') || null,
       }),
     });
     const d = await res.json();
