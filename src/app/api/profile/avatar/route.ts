@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { execute } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -21,17 +19,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Image must be less than 2MB' }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `avatar_${session.userId}_${Date.now()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-
-    await mkdir(uploadDir, { recursive: true });
     const bytes = await file.arrayBuffer();
-    await writeFile(path.join(uploadDir, filename), Buffer.from(bytes));
+    const base64 = Buffer.from(bytes).toString('base64');
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    await execute('UPDATE users SET avatar = ? WHERE id = ?', [filename, session.userId]);
+    await execute('UPDATE users SET avatar = ? WHERE id = ?', [dataUrl, session.userId]);
 
-    return NextResponse.json({ success: true, message: 'Avatar updated successfully.', avatar: filename });
+    return NextResponse.json({ success: true, message: 'Avatar updated successfully.', avatar: dataUrl });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to upload image' }, { status: 500 });
   }

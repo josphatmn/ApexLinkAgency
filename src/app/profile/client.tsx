@@ -73,7 +73,7 @@ export default function ProfileClient({ user }: { user: any }) {
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div className="flex items-center gap-4">
               {user.avatar ? (
-                <img src={`/uploads/avatars/${user.avatar}`} alt="" className="h-16 w-16 rounded-full object-cover" />
+                <img src={user.avatar} alt="" className="h-16 w-16 rounded-full object-cover" />
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white" style={{ backgroundColor: avatarColor }}>
                   {user.username[0].toUpperCase()}

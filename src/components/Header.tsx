@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
 import { useState, useEffect } from 'react';
 import { toast } from './Toast';
+import Logo from './Logo';
 
 interface UserData {
   id: number;
@@ -54,9 +55,7 @@ export default function Header() {
   return (
     <header className={`sticky top-0 z-50 border-b dark:border-zinc-800 ${isLanding ? 'border-transparent bg-transparent' : 'border-zinc-200 bg-white/80 backdrop-blur-md dark:bg-zinc-950/80'}`}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link href="/" className={`text-xl font-bold tracking-tight ${isLanding ? 'text-zinc-900 drop-shadow-sm dark:text-white dark:drop-shadow-lg' : 'text-zinc-900 dark:text-white'}`}>
-          {process.env.NEXT_PUBLIC_SITE_NAME || 'APEXLINK Agency'}
-        </Link>
+        <Logo className={isLanding ? 'text-white drop-shadow-lg dark:text-white' : 'text-zinc-900 dark:text-white'} />
 
         <nav className="flex items-center gap-1">
           {loading ? (
@@ -185,7 +184,7 @@ export default function Header() {
                   className="flex items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   {user.avatar ? (
-                    <img src={`/uploads/avatars/${user.avatar}`} alt="" className="h-7 w-7 rounded-full object-cover" />
+                    <img src={user.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
                   ) : (
                     <div className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: avatarColor }}>
                       {user.username[0].toUpperCase()}

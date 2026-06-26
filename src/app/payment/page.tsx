@@ -3,22 +3,15 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from '@/components/Toast';
+import SasapayModal from '@/components/SasapayModal';
 
 export default function PaymentPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
-  const handlePayment = async () => {
-    setLoading(true);
-    const res = await fetch('/api/payment/simulate', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      toast.success(data.message);
-      setTimeout(() => router.push('/dashboard'), 1500);
-    } else {
-      toast.error(data.error || 'Payment failed');
-      setLoading(false);
-    }
+  const handleSuccess = () => {
+    setShowModal(false);
+    router.push('/dashboard');
   };
 
   return (
@@ -32,18 +25,16 @@ export default function PaymentPage() {
           {parseFloat(process.env.NEXT_PUBLIC_ACTIVATION_FEE || '500').toLocaleString('en-US', { minimumFractionDigits: 2 })} {process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'KES'}
         </div>
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Pay the activation fee to unlock your dashboard and start earning commissions.
+          Pay the activation fee via M-Pesa to unlock your dashboard and start earning commissions.
         </p>
-        <div className="mb-6 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-          Payment integration coming soon. Click the button below to simulate payment.
-        </div>
+
         <button
-          onClick={handlePayment}
-          disabled={loading}
-          className="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+          onClick={() => setShowModal(true)}
+          className="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-green-700"
         >
-          {loading ? 'Processing...' : '\u2713 Simulate Payment'}
+          Pay with M-Pesa
         </button>
+
         <div className="mt-6">
           <button
             onClick={async () => {
@@ -57,6 +48,14 @@ export default function PaymentPage() {
           </button>
         </div>
       </div>
+
+      <SasapayModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        amount={parseFloat(process.env.NEXT_PUBLIC_ACTIVATION_FEE || '500')}
+        currency={process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || 'KES'}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }
