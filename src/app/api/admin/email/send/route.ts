@@ -46,9 +46,7 @@ export async function POST(req: NextRequest) {
       <p style="color:#a1a1aa;font-size:12px">Apexlink Agency</p>
     </div>`;
 
-    let fromName = 'Apexlink Agency';
-
-    const result = await sendMail(emails, fromName, subject, html);
+    const result = await sendMail(emails, subject, html);
 
     if (!result.sent) {
       return NextResponse.json({ success: false, error: result.error || 'Failed to send email' }, { status: 500 });

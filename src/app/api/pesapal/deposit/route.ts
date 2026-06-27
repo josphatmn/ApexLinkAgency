@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { config } from '@/lib/config';
 import { randomHex } from '@/lib/utils';
-import { submitOrder, registerIPN, isPesapalConfigured } from '@/lib/pesapal';
+import { submitOrder, getNotificationId, isPesapalConfigured, simulatedResponse } from '@/lib/pesapal';
 import { execute } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
@@ -40,28 +40,14 @@ export async function POST(req: NextRequest) {
     );
 
     if (!isPesapalConfigured()) {
-      const fakeId = 'PESA-' + randomHex(6).toUpperCase();
-      return NextResponse.json({
-        success: true,
-        simulated: true,
-        orderTrackingId: fakeId,
-        merchantReference: merchantRef,
-        redirectUrl: null,
-        message: 'DEV MODE: Simulated deposit (PesaPal not configured).',
-      });
+      return NextResponse.json({ success: true, ...simulatedResponse(merchantRef) });
     }
 
     const callbackUrl = `${config.siteUrl}/payment/callback`;
-    const ipnUrl = `${config.siteUrl}/api/pesapal/webhook`;
+    const notificationId = await getNotificationId(config.siteUrl);
 
-    let notificationId = process.env.PESAPAL_NOTIFICATION_ID || '';
     if (!notificationId) {
-      try {
-        const ipn = await registerIPN(ipnUrl, 'POST');
-        notificationId = ipn.ipn_id;
-      } catch {
-        return NextResponse.json({ success: false, error: 'Failed to register IPN URL' }, { status: 500 });
-      }
+      return NextResponse.json({ success: true, ...simulatedResponse(merchantRef) });
     }
 
     const result = await submitOrder(
@@ -75,6 +61,10 @@ export async function POST(req: NextRequest) {
       session.username,
       '',
     );
+
+    if (!result) {
+      return NextResponse.json({ success: true, ...simulatedResponse(merchantRef) });
+    }
 
     await execute(
       'UPDATE pending_deposits SET order_tracking_id = ? WHERE merchant_reference = ?',

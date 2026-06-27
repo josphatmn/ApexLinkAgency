@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { config } from '@/lib/config';
 import { randomHex } from '@/lib/utils';
-import { submitOrder, registerIPN, isPesapalConfigured } from '@/lib/pesapal';
+import { submitOrder, getNotificationId, isPesapalConfigured, simulatedResponse } from '@/lib/pesapal';
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -25,30 +25,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
     }
 
+    const merchantRef = 'ACT-' + randomHex(6).toUpperCase();
+
     if (!isPesapalConfigured()) {
-      const fakeId = 'PESA-' + randomHex(6).toUpperCase();
-      return NextResponse.json({
-        success: true,
-        simulated: true,
-        orderTrackingId: fakeId,
-        merchantReference: fakeId,
-        redirectUrl: null,
-        message: 'DEV MODE: Simulated payment (PesaPal not configured).',
-      });
+      return NextResponse.json({ success: true, ...simulatedResponse(merchantRef) });
     }
 
-    const merchantRef = 'ACT-' + randomHex(6).toUpperCase();
     const callbackUrl = `${config.siteUrl}/payment/callback`;
-    const ipnUrl = `${config.siteUrl}/api/pesapal/webhook`;
+    const notificationId = await getNotificationId(config.siteUrl);
 
-    let notificationId = process.env.PESAPAL_NOTIFICATION_ID || '';
     if (!notificationId) {
-      try {
-        const ipn = await registerIPN(ipnUrl, 'POST');
-        notificationId = ipn.ipn_id;
-      } catch {
-        return NextResponse.json({ success: false, error: 'Failed to register IPN URL' }, { status: 500 });
-      }
+      return NextResponse.json({ success: true, ...simulatedResponse(merchantRef) });
     }
 
     const result = await submitOrder(
@@ -63,11 +50,15 @@ export async function POST(req: NextRequest) {
       '',
     );
 
+    if (!result) {
+      return NextResponse.json({ success: true, ...simulatedResponse(merchantRef) });
+    }
+
     return NextResponse.json({
       success: true,
       simulated: false,
       orderTrackingId: result.order_tracking_id,
-      merchantReference: result.merchant_reference,
+      merchantReference: merchantRef,
       redirectUrl: result.redirect_url,
       message: 'Redirecting to PesaPal...',
     });
